@@ -1,28 +1,3 @@
-"""
-Pricing Pattern Shift in Real Estate — Data Science Project
-Single-file Python project (minimal dependencies) for analyzing how real estate prices
-changed after the COVID-19 pandemic using open listing data.
-
-Usage:
-    python pricing_pattern_shift.py --data path/to/listings.csv --output results/
-
-If no data file is provided the script will generate a small synthetic dataset so you
-can run the pipeline end-to-end.
-
-Minimal dependencies (recommended):
-    pandas >= 1.1
-    numpy
-    matplotlib
-    scikit-learn  (optional, used only for an optional predictive model)
-
-Design goals:
- - single script, modular functions
- - robust to missing columns (works with common listing CSVs that contain: date, price, area, city/neighborhood, property_type)
- - light-weight visualizations using matplotlib
- - optional modeling with scikit-learn guarded by try/except
-
-Author: Generated for a Data Science project
-"""
 
 import os
 import sys
@@ -33,7 +8,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-# Try to import sklearn but keep it optional
+
 try:
     from sklearn.linear_model import LinearRegression
     SKLEARN_AVAILABLE = True
@@ -41,33 +16,21 @@ except Exception:
     SKLEARN_AVAILABLE = False
 
 
-# ------------------------- Data utilities -------------------------
 
 def load_listings(path):
-    """Load CSV into DataFrame. Attempts to coerce common column names.
-
-    Expected useful columns (any subset):
-      - date (listing or transaction date)
-      - price (numeric)
-      - area (square feet / square meter)
-      - city / neighborhood / location
-      - property_type (house/apartment)
-
-    Returns: pandas.DataFrame
-    """
+  
     df = pd.read_csv(path)
 
-    # normalize column names to lowercase
+
     df.columns = [c.strip().lower() for c in df.columns]
 
-    # guess columns
+
     possible_date = [c for c in df.columns if 'date' in c]
     possible_price = [c for c in df.columns if 'price' in c]
     possible_area = [c for c in df.columns if c in ('area','sqft','sqm','size','builtup','size_sqft') or 'area' in c or 'sqft' in c or 'size' in c]
     possible_city = [c for c in df.columns if c in ('city','town','location','neighborhood','state')]
     possible_type = [c for c in df.columns if 'property' in c or 'type' in c]
 
-    # rename to standard names
     col_map = {}
     if possible_date:
         col_map[possible_date[0]] = 'date'
@@ -90,17 +53,16 @@ def generate_synthetic_listings(n=1000, seed=42):
     This is useful to test the pipeline without real listings.
     """
     rng = np.random.RandomState(seed)
-    # Dates from 2017-01-01 to 2024-12-31
+
     start = datetime(2017, 1, 1)
     end = datetime(2024, 12, 31)
     days = (end - start).days
     dates = [start + pd.Timedelta(days=int(x)) for x in rng.uniform(0, days, size=n)]
 
-    # locations
+
     locations = ['MetroCity', 'SuburbA', 'SuburbB']
     property_types = ['apartment', 'house']
 
-    # base price per sqft (set different trends for locations)
     base = {
         'MetroCity': 2000,
         'SuburbA': 1200,
@@ -111,19 +73,19 @@ def generate_synthetic_listings(n=1000, seed=42):
     for d in dates:
         loc = rng.choice(locations)
         ptype = rng.choice(property_types, p=[0.7, 0.3])
-        # area
+
         area = max(300, int(rng.normal(900, 300)))
 
-        # simulate price trend: small growth pre-2020, dip/shift in 2020-2021, then divergent recoveries
+       
         year = d.year + (d.timetuple().tm_yday / 365.0)
-        # pre-2020 growth
+     
         trend = 1 + 0.03 * (year - 2017)
-        # pandemic effect
+
         if year >= 2020 and year < 2022:
-            # temporary shock + location-specific effect
-            shock = rng.normal(0.9, 0.05)  # 10% drop on average
+         
+            shock = rng.normal(0.9, 0.05) 
             trend = trend * shock
-        # post-2022 divergent growth (metro slower, suburbs faster)
+       
         if year >= 2022:
             if loc == 'MetroCity':
                 trend *= 1 + 0.02 * (year - 2022)
@@ -139,7 +101,7 @@ def generate_synthetic_listings(n=1000, seed=42):
     return df
 
 
-# ------------------------- Preprocessing -------------------------
+
 
 def preprocess(df):
     """Standardize and clean the DataFrame. Adds price_per_unit and datetime index.
@@ -148,14 +110,14 @@ def preprocess(df):
     """
     df = df.copy()
 
-    # parse date
+
     if 'date' in df.columns:
         df['date'] = pd.to_datetime(df['date'], errors='coerce')
     else:
-        # if no date, create synthetic increasing index (not ideal)
+
         df['date'] = pd.to_datetime('2017-01-01') + pd.to_timedelta(np.arange(len(df)), unit='D')
 
-    # coerce price and area
+
     if 'price' in df.columns:
         df['price'] = pd.to_numeric(df['price'], errors='coerce')
     else:
@@ -166,26 +128,26 @@ def preprocess(df):
     else:
         df['area'] = np.nan
 
-    # price per unit
+
     df['price_per_area'] = df['price'] / df['area']
 
-    # drop obviously broken rows
-    df = df[df['price'] > 1000]  # filter tiny prices
+ 
+    df = df[df['price'] > 1000]  
     df = df[df['area'] > 50]
 
-    # fill location/type
+
     if 'location' not in df.columns:
         df['location'] = 'unknown'
     if 'property_type' not in df.columns:
         df['property_type'] = 'unknown'
 
-    # set date index
+
     df = df.sort_values('date').set_index('date')
 
     return df
 
 
-# ------------------------- Analysis functions -------------------------
+
 
 def monthly_median_trend(df, group_by='location'):
     """Compute monthly median price_per_area trends for each group (default location).
@@ -221,7 +183,7 @@ def compute_change_stats(pivot, baseline_start='2017-01-01', baseline_end='2019-
 
     Returns a DataFrame with columns: baseline_median, post_median, pct_change
     """
-    # convert strings to timestamps
+
     bs = pd.to_datetime(baseline_start)
     be = pd.to_datetime(baseline_end)
     ps = pd.to_datetime(post_start)
@@ -235,7 +197,7 @@ def compute_change_stats(pivot, baseline_start='2017-01-01', baseline_end='2019-
     return df.sort_values('pct_change', ascending=False)
 
 
-# ------------------------- Simple predictive model (optional) -------------------------
+
 
 def train_simple_trend_model(pivot, group, months_ahead=6):
     """Train a tiny linear regression to forecast future monthly median price for one group.
@@ -258,14 +220,14 @@ def train_simple_trend_model(pivot, group, months_ahead=6):
     future_X = np.arange(len(series), len(series) + months_ahead).reshape(-1, 1)
     preds = model.predict(future_X).ravel()
 
-    # return forecast index and values
+
     last_month = series.index[-1]
     future_index = pd.date_range(last_month + pd.offsets.MonthBegin(1), periods=months_ahead, freq='MS')
     forecast = pd.Series(preds, index=future_index)
     return model, forecast
 
 
-# ------------------------- Main pipeline -------------------------
+
 
 def run_pipeline(data_path=None, output_dir='results'):
     os.makedirs(output_dir, exist_ok=True)
@@ -282,7 +244,7 @@ def run_pipeline(data_path=None, output_dir='results'):
 
     pivot = monthly_median_trend(df, group_by='location')
 
-    # quick diagnostics: save pivot
+ 
     pivot.to_csv(os.path.join(output_dir, 'monthly_median_by_location.csv'))
 
     plot_trends(pivot, title='Monthly median price per area by location')
@@ -292,7 +254,6 @@ def run_pipeline(data_path=None, output_dir='results'):
     print('\nPercent change from baseline to post-pandemic (saved to pre_post_change_stats.csv):\n')
     print(stats)
 
-    # run optional model for the top location
     try:
         top_location = stats.index[0]
         if SKLEARN_AVAILABLE:
@@ -307,7 +268,6 @@ def run_pipeline(data_path=None, output_dir='results'):
     print('\nPipeline completed. Check the', output_dir, 'folder for outputs (CSV + PNG).')
 
 
-# ------------------------- CLI -------------------------
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Pricing Pattern Shift in Real Estate — lightweight pipeline')
