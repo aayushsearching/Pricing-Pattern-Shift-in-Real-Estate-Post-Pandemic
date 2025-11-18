@@ -26,3 +26,45 @@ The entire pipeline is written in Python with minimal dependencies, making it ea
 🧩 Works even with incomplete CSVs thanks to auto-column detection
 
 🧪 Synthetic dataset generator if you don't provide real data
+
+
+
+🚀 How to Run the Project
+
+You can run this project with **your own real-estate dataset** or use the **built-in synthetic data generator**.
+
+▶️ Run with Your CSV Data
+
+Replace `yourfile.csv` with the path to your dataset:
+
+bash
+python pricing_pattern_shift.py --data yourfile.csv --output results
+
+
+Example (Windows):
+
+bash
+python pricing_pattern_shift.py --data "C:\Users\ragha\Downloads\Bengaluru_House_Data.csv" --output results
+
+All output files (charts + CSV summaries) will be saved to the results/ folder.
+
+▶️ Run With Synthetic Data (No CSV Needed)
+
+If you don’t provide a dataset, the script auto-generates a realistic synthetic real-estate dataset and runs the full pipeline:
+
+bash
+python pricing_pattern_shift.py
+
+
+▶️ Save Outputs to a Custom Folder
+You can specify your own output directory:
+
+bash
+python pricing_pattern_shift.py --data yourfile.csv --output analysis_output
+
+The folder will be created automatically.
+
+▶️ View Help / Usage Instructions
+
+bash
+python pricing_pattern_shift.py --help
